@@ -52,6 +52,9 @@ for filename in os.listdir("mudcat"):
             song["chld"] = child_match.group(1)
         elif laws_match:
             song["laws"] = laws_match.group(1)
+        elif line.startswith("DT #"):
+            print line
+            continue
         else:
             lyrics.append(line)
     song["txt"] = lyrics
