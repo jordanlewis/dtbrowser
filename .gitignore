@@ -52,5 +52,16 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+#clj/s stuff
+pom.xml
+*jar
+/lib/
+/classes/
+/out/
+/target/
+.lein-deps-sum
+.lein-repl-history
+.lein-plugins/
+
 mudcat
 data.json
