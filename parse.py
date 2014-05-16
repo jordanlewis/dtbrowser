@@ -18,6 +18,11 @@ for filename in os.listdir("mudcat"):
     file = open("mudcat/" + filename)
     # 247th line of all mudcat html is the actual data...
     text = file.readlines()[246].decode(encoding="UTF-8", errors="replace")
+    text = text.strip()
+    if not text:
+        print filename
+        continue
+
     lines = text.split("<BR>")
 
     # dictionary for the current file
@@ -26,10 +31,14 @@ for filename in os.listdir("mudcat"):
     lyrics = []
 
     # search for the break between the title/author and lyrics
+    found_title = False
     found_break = False
     author_lines = []
-    for idx, line in enumerate(lines):
-        if idx == 0:
+    for line in lines:
+        if not found_title:
+            if not line:
+                continue
+            found_title = True
             song["title"] = line.strip()
         elif not found_break:
             if line:
