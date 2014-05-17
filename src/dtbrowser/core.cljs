@@ -45,4 +45,4 @@
   (swap! app-state assoc :text response))
 (om/root simple-app app-state {:target (. js/document (getElementById "song-list-container"))})
 (om/root song-view song-state {:target (. js/document (getElementById "song-view-container"))})
-(GET "../data.json" {:handler handler :response-format :json});
+(GET "data.json" {:handler handler :response-format :json});
