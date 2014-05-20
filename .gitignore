@@ -63,5 +63,7 @@ pom.xml
 .lein-repl-history
 .lein-plugins/
 
+.nrepl-port
+
 mudcat
 data.json
