@@ -1,0 +1,8 @@
+#song-list-container {
+    float:left;
+    width: 20%
+}
+#song-view-container {
+    float:left;
+    width: 65%
+}
