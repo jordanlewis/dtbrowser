@@ -18,9 +18,7 @@
   (let [new-filter-text (.. e -target -value)
         found-items (map #(.-ref %) (. index search new-filter-text))]
     (om/set-state! owner :filter-text new-filter-text)
-    (swap! app-state assoc :items found-items)
-    (prn found-items)
-    (prn new-filter-text)))
+    (swap! app-state assoc :items found-items)))
 
 (defn song-list-view [app owner]
   (reify
@@ -33,7 +31,7 @@
         (dom/h2 nil "Song list")
         (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
                         :onChange #(handle-filter-change % app owner state)})
-               (prn "hodor")
+               (prn "rerendering")
         (apply dom/ul nil
           (map (fn [[k v]]
                  (dom/li nil
@@ -55,10 +53,12 @@
   (->> "title" item (#(split % " ")) (map capitalize) (join " ") (assoc item "title")))
 
 (defn handler [response]
+  (prn "Building lunr.js index...")
   (dorun (map (fn [[k v]] (. index add #js {"id" k "title" (v "title") })) response))
+  (prn "Setting up state...")
   (set! data (into {} (for [[k v] response] [k (titleize v)])))
-  (prn "blodor")
-  (swap! app-state assoc :items (keys data)))
+  (swap! app-state assoc :items (keys data))
+  (prn "Done"))
 
 (GET "data.json" {:handler handler :response-format :json});
 
