@@ -19,4 +19,5 @@
                 :output-to "dtbrowser.js"
                 :output-dir "out"
                 :optimizations :none
+                :externs ["libs/lunr.min.js"]
                 :source-map true}}]})

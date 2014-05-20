@@ -8,41 +8,58 @@
 
 (enable-console-print!)
 
+(def data {})
 
-(def app-state (atom {:text ""}))
-(def song-state (atom {:song {}}))
+(def app-state (atom {:items [] :selected {}}))
 
-(defn song-view [[n song] owner]
+(def index (js/lunr #(this-as this (. this field "title") (. this ref "id"))))
+
+(defn handle-filter-change [e app owner {:keys [filter-text]}]
+  (let [new-filter-text (.. e -target -value)
+        found-items (map #(.-ref %) (. index search new-filter-text))]
+    (om/set-state! owner :filter-text new-filter-text)
+    (swap! app-state assoc :items found-items)
+    (prn found-items)
+    (prn new-filter-text)))
+
+(defn song-list-view [app owner]
+  (reify
+    om/IInitState
+    (init-state [this]
+      {:filter-text ""})
+    om/IRenderState
+    (render-state [this state]
+      (dom/div #js {:id "song-list-container"}
+        (dom/h2 nil "Song list")
+        (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
+                        :onChange #(handle-filter-change % app owner state)})
+               (prn "hodor")
+        (apply dom/ul nil
+          (map (fn [[k v]]
+                 (dom/li nil
+                   (dom/a #js {:onClick (fn [e] (om/update! app :selected k))}
+                          (v "title"))))
+               (select-keys data (:items app))))))))
+
+(defn app [app owner]
   (reify
     om/IRender
     (render [this]
-      (dom/li nil
-        (dom/span nil (:name song))))))
+      (dom/div nil
+        (om/build song-list-view app)
+        (dom/div #js {:id "song-view-container"}
+          (dom/h2 nil "Song text")
+          (dom/pre nil (join "\n" (get (get data (:selected app) {}) "txt" ""))))))))
 
-(defn main-app [app owner]
-  (reify
-    om/IRender
-    (render [this]
-       (dom/div nil
-          (dom/h2 nil "Song list")
-          (apply dom/ul nil
-            (om/build-all song-view (seq {:text app})))))))
-
-(defn simple-app [app owner]
-  (apply dom/ul nil
-         (map (fn [[a b]]
-                (dom/li nil
-                  (dom/a #js {:onClick (fn [e] (.log js/console "hi")(swap! song-state assoc :song @b))}
-                         (join " " (map capitalize (split (b "title") " "))))))
-              (:text app))))
-
-(defn song-view [app owner]
-  (dom/div nil
-    (dom/h2 nil "Song text")
-           (dom/pre nil (join "\n" ((:song app) "txt")))))
+(defn titleize [item]
+  (->> "title" item (#(split % " ")) (map capitalize) (join " ") (assoc item "title")))
 
 (defn handler [response]
-  (swap! app-state assoc :text response))
-(om/root simple-app app-state {:target (. js/document (getElementById "song-list-container"))})
-(om/root song-view song-state {:target (. js/document (getElementById "song-view-container"))})
+  (dorun (map (fn [[k v]] (. index add #js {"id" k "title" (v "title") })) response))
+  (set! data (into {} (for [[k v] response] [k (titleize v)])))
+  (prn "blodor")
+  (swap! app-state assoc :items (keys data)))
+
 (GET "data.json" {:handler handler :response-format :json});
+
+(om/root app app-state {:target (. js/document (getElementById "app"))})
