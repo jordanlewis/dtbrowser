@@ -16,7 +16,7 @@
     :builds [{:id "dev"
               :source-paths ["src"]
               :compiler {
-                :output-to "dtbrowser.js"
+                :output-to "dtbrowser-dev.js"
                 :output-dir "out"
                 :optimizations :none
                 :source-map true}}
