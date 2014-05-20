@@ -13,11 +13,19 @@
   :source-paths ["src"]
 
   :cljsbuild {
-    :builds [{:id "dtbrowser"
+    :builds [{:id "dev"
               :source-paths ["src"]
               :compiler {
                 :output-to "dtbrowser.js"
                 :output-dir "out"
                 :optimizations :none
-                :externs ["libs/lunr.min.js"]
-                :source-map true}}]})
+                :source-map true}}
+             {:id "release"
+              :source-paths ["src"]
+              :compiler {
+                :output-to "dtbrowser.js"
+                :optimizations :advanced
+                :pretty-print false
+                :preamble ["react/react.min.js"]
+                :externs ["react/externs/react.js" "libs/lunr.min.js"]}}
+             ]})

@@ -60,6 +60,6 @@
   (swap! app-state assoc :items (keys data))
   (prn "Done"))
 
-(GET "data.json" {:handler handler :response-format :json});
+(GET "data.json" {:handler handler :response-format :json})
 
 (om/root app app-state {:target (. js/document (getElementById "app"))})
