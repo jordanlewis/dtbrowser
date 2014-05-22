@@ -39,7 +39,7 @@ for filename in os.listdir("mudcat"):
             if not line:
                 continue
             found_title = True
-            song["title"] = line.strip()
+            song["title"] = " ".join(w.capitalize() for w in line.strip().split())
         elif not found_break:
             if line:
                 # this is sometimes the author of the lyrics in parens
