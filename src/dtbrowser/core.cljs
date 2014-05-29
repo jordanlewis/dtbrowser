@@ -39,7 +39,7 @@
   (reify
     om/IRender
     (render [this]
-      (dom/li #js {"key" songid}
+      (dom/li nil
         (dom/a #js {:onClick (fn [e] (swap! app-state assoc :selected songid))}
                (aget (aget data songid) "title"))))))
 
@@ -53,7 +53,8 @@
     (render [this]
       (prn "rerendering")
       (apply dom/ul nil
-        (om/build-all song-view (if-let [items (:items app)] items (js/Object.keys data)))))))
+        (map #(om/build song-view % {:react-key %})
+             (if-let [items (:items app)] items (js/Object.keys data)))))))
 
 ;; a component for a filterable list of songs
 (defn filterable-song-list-view [app owner]
