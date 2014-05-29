@@ -39,7 +39,7 @@
   (reify
     om/IRender
     (render [this]
-      (dom/li nil
+      (dom/li #js {"key" songid}
         (dom/a #js {:onClick (fn [e] (swap! app-state assoc :selected songid))}
                (aget (aget data songid) "title"))))))
 
