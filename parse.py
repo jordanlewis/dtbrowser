@@ -49,7 +49,7 @@ for filename in os.listdir("mudcat"):
         elif line.startswith("<A "):
             continue
         elif line.startswith("@"):
-            song["tags"] = [tag.strip() for tag in line.split("@")[1:]]
+            song["tags"] = " ".join([tag.strip() for tag in line.split("@")[1:]])
         elif line.startswith("DT #"):
             continue
         elif line.startswith("TUNE FILE: "):
