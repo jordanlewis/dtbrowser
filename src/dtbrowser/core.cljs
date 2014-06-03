@@ -3,7 +3,8 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [clojure.string :refer [split join capitalize]]
-            [cljs.core.async :refer [put! chan <!]]
+            [cljs.core.async :refer [put! chan <! >! timeout alts!]]
+            [goog.events :as events]
             [ajax.core :refer [GET]])
   (:import [goog.net XhrIo]
            goog.object
@@ -21,6 +22,7 @@
 ;; our lunr.js index
 (def index (js/lunr #(this-as this
                               (. this field "title")
+                              (. this field "tags")
                               (. this ref "id"))))
 
 ;; gets called when the user changes the filter text
@@ -65,18 +67,22 @@
     om/IRenderState
     (render-state [this state]
       (dom/div #js {:id "song-list-container"}
-        (dom/h2 nil "Song list")
+        (dom/div #js {:id "song-list-header"}
+          (dom/h2 nil "Song list")
           (if (:loading app)
             (dom/span #js {:id "hodor"} "Please wait while the index is populated...")
-            (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
-                            :onChange #(handle-filter-change % app owner state)}))
-        (om/build song-list-view app)))))
+            (dom/div nil
+              (dom/span #js {:id "blodor"} "")
+              (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
+                              :onChange #(handle-filter-change % app owner state)}))))
+        (dom/div #js {:id "song-list"}
+          (om/build song-list-view app))))))
 
 (defn app [app owner]
   (reify
     om/IRender
     (render [this]
-      (dom/div nil
+      (dom/div #js {:id "container"}
         (om/build filterable-song-list-view app)
         (dom/div #js {:id "song-view-container"}
           (dom/h2 nil "Song text")
@@ -85,7 +91,22 @@
 
 (om/root app app-state {:target (. js/document (getElementById "app"))})
 
-(def indexchan (chan))
+(defn index-loop []
+  (let [in (chan)]
+    (go (loop [refresh (timeout 40) queue []]
+          (let [[v c] (alts! [refresh in])]
+            (condp = c
+              refresh (do (doseq [k queue]
+                            (. index add (clj->js {"id" k
+                                                   "title" (aget (aget data k) "title")
+                                                   "tags" (aget (aget data k) "tags")})))
+                          (<! (timeout 0))
+                          (recur (timeout 40) []))
+              in (if (= v :done)
+                   (prn "Done indexing")
+                   (recur refresh (conj queue v)))))))
+    in))
+
 
 (defn handler [response]
   (prn "Setting up state...")
@@ -93,16 +114,15 @@
   (set! all-items (js/Object.keys data))
   (swap! app-state assoc :items all-items)
 
-  (js/setTimeout
-    (fn []
+  (prn "Adding to index queue...")
+  (def ms (. (js/Date.) (getTime)))
+  (let [index-chan (index-loop)]
+    (go
+      (doseq [k (js/Object.keys data)]
+        (>! index-chan k))
+      (>! index-chan :done)))
 
-    (prn "Building lunr.js index...")
-
-    (dorun (map (fn [k i]
-                  ;;(set! (.-innerHTML (. js/document (getElementById "hodor"))) "blah")
-                  (. index add #js {"id" k "title" (aget (aget data k) "title")}))
-                (js/Object.keys data) (range)))
-    (swap! app-state assoc :loading false)
-    (prn "Done")) 100))
+  (swap! app-state assoc :loading false)
+  (prn (str "Done in " (- (. (js/Date.)(getTime)) ms) "ms")))
 
 (.send XhrIo "data.json" handler)
