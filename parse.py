@@ -72,9 +72,9 @@ for filename in os.listdir("mudcat"):
                 song["roud"] = roud_match.group(1)
             else:
                 lyrics.append(line)
-    song["txt"] = lyrics
+    song["txt"] = "\n".join(lyrics)
     if author_lines:
-        song["a"] = " ".join(author_lines)
+        song["auth"] = " ".join(author_lines)
 
     # filenames look like song_xxx.html, grab the xxx
     data[int(filename[5:-5])] = song
