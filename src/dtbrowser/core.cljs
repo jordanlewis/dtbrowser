@@ -2,6 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
+            [domina :refer [by-id set-text!]]
             [clojure.string :refer [split join capitalize]]
             [cljs.core.async :refer [put! chan <! >! timeout alts!]]
             [goog.events :as events]
@@ -72,7 +73,7 @@
           (if (:loading app)
             (dom/span #js {:id "hodor"} "Please wait while the index is populated...")
             (dom/div nil
-              (dom/span #js {:id "blodor"} "")
+              (dom/input #js {:type "text"})
               (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
                               :onChange #(handle-filter-change % app owner state)}))))
         (dom/div #js {:id "song-list"}
@@ -91,20 +92,45 @@
 
 (om/root app app-state {:target (. js/document (getElementById "app"))})
 
+(defn add-to-index [queue percent]
+  (doseq [k queue]
+    (. index add (clj->js {"id" k
+                           "title" (aget (aget data k) "title")
+                           "body" (aget (aget data k) "txt")
+                           "tags" (aget (aget data k) "tags")})))
+  (set-text! (by-id "counter") (str percent "%")))
+
 (defn index-loop []
   (let [in (chan)]
-    (go (loop [refresh (timeout 40) queue []]
-          (let [[v c] (alts! [refresh in])]
+    (go (loop [refresh (timeout 40) queue [] counter 0]
+          (let [[v c] (alts! [refresh in] :priority true)
+                percent (Math/floor (* 100 (/ counter (count all-items))))]
             (condp = c
-              refresh (do (doseq [k queue]
-                            (. index add (clj->js {"id" k
-                                                   "title" (aget (aget data k) "title")
-                                                   "tags" (aget (aget data k) "tags")})))
+              refresh (do (add-to-index queue percent)
                           (<! (timeout 0))
-                          (recur (timeout 40) []))
+                          (recur (timeout 40) [] counter))
               in (if (= v :done)
-                   (prn "Done indexing")
-                   (recur refresh (conj queue v)))))))
+                   (add-to-index queue percent)
+                   (recur refresh (conj queue v) (inc counter)))))))
+    in))
+
+(defn index-loop-2 []
+  (let [in (chan 500)]
+    (go (loop [counter 0 percent 0]
+          (let [k (<! in)
+                new-percent (Math/floor (* 100 (/ counter (count all-items))))]
+            (if k
+              (do
+                (if-let [v (aget data k)]
+                  (. index add
+                     (clj->js {"id" k
+                               "title" (aget v "title")
+                               "tags"  (aget v "tags")})))
+                (if-not (= percent new-percent)
+                  (set-text! (by-id "counter") (str new-percent "%")))
+                (<! (timeout 0))
+                (recur (inc counter) new-percent))
+              (prn "Done indexing")))))
     in))
 
 
@@ -116,7 +142,7 @@
 
   (prn "Adding to index queue...")
   (def ms (. (js/Date.) (getTime)))
-  (let [index-chan (index-loop)]
+  (let [index-chan (index-loop-2)]
     (go
       (doseq [k (js/Object.keys data)]
         (>! index-chan k))

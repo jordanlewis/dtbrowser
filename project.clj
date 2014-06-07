@@ -6,6 +6,7 @@
                  [org.clojure/clojurescript "0.0-2227"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [cljs-ajax "0.2.3"]
+                 [domina "1.0.2"]
                  [om "0.5.0"]]
 
   :plugins [[lein-cljsbuild "1.0.3"]]
