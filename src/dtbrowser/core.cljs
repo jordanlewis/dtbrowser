@@ -26,16 +26,25 @@
                               (. this field "tags")
                               (. this ref "id"))))
 
+(defn search-handler [response]
+  (swap! app-state assoc :items
+         (map #(% "id")
+              (get-in (js->clj (.getResponseJson (.-target response)))
+                      ["response" "docs"]))))
+
+(defn search [query]
+  (.send XhrIo (str "/solr/collection1/select?q=" query "&rows=1000&fl=id&wt=json&indent=true") search-handler))
+
 ;; gets called when the user changes the filter text
 ;; searches the index and sets :selected to the result
 (defn handle-filter-change [e app owner {:keys [filter-text]}]
-  (let [new-filter-text (.. e -target -value)
-        found-items (if (empty? new-filter-text)
-                      all-items
-                      (into [] (map #(.-ref %) (. index search new-filter-text))))]
+  (let [new-filter-text (.. e -target -value)]
+        ;found-items (if (empty? new-filter-text)
+        ;              all-items
+        ;              (into [] (map #(.-ref %) (. index search new-filter-text))))]
+    (search new-filter-text)
     (prn new-filter-text)
-    (om/set-state! owner :filter-text new-filter-text)
-    (swap! app-state assoc :items found-items)))
+    (om/set-state! owner :filter-text new-filter-text)))
 
 ;; a component for a single song in the list
 (defn song-view [songid owner]
@@ -73,7 +82,6 @@
           (if (:loading app)
             (dom/span #js {:id "hodor"} "Please wait while the index is populated...")
             (dom/div nil
-              (dom/input #js {:type "text"})
               (dom/input #js {:type "text" :ref "filter-text" :value (:filter-text state)
                               :onChange #(handle-filter-change % app owner state)}))))
         (dom/div #js {:id "song-list"}
@@ -88,7 +96,10 @@
         (dom/div #js {:id "song-view-container"}
           (dom/h2 nil "Song text")
             (if-let [song (aget data (:selected app))]
-              (dom/pre nil (join "\n" (aget song "txt")))))))))
+              (dom/div nil
+                       (dom/pre nil (aget song "txt"))
+                       (dom/span nil (aget song "auth"))
+                       (dom/span nil (aget song "tags")))))))))
 
 (om/root app app-state {:target (. js/document (getElementById "app"))})
 
@@ -140,6 +151,7 @@
   (set! all-items (js/Object.keys data))
   (swap! app-state assoc :items all-items)
 
+  (comment
   (prn "Adding to index queue...")
   (def ms (. (js/Date.) (getTime)))
   (let [index-chan (index-loop-2)]
@@ -148,6 +160,7 @@
         (>! index-chan k))
       (>! index-chan :done)))
 
+  )
   (swap! app-state assoc :loading false)
   (prn (str "Done in " (- (. (js/Date.)(getTime)) ms) "ms")))
 
